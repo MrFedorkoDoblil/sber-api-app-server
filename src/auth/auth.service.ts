@@ -17,7 +17,6 @@ export class AuthService {
         @InjectModel(Sid.name) private readonly sidModel: Model<Sid>
         ){}
 
-
     async auth(body: AuthDto){
         const {login, password} = body;
         const user = await this.userModel.findOne({login})
@@ -61,7 +60,7 @@ export class AuthService {
                     'redirect_uri': process.env.SB_ID_AUTH_REDIRECT_URI,
                     'client_secret': process.env.SB_ID_CLIENT_SECRET 
                 }),
-                method: 'get',
+                method: 'post',
                 cache: 'no-cache'
             })
             if (response.status !== 200) throw new UnauthorizedException();
@@ -104,6 +103,11 @@ export class AuthService {
     async refreshToken(){
         return 'here will be implementation of token routing'
     }
+
+
+    /**
+     * The function "getsids" retrieves all Session Ids
+     */
     async getsids(){
         return await this.sidModel.find();
     }
