@@ -28,6 +28,15 @@ export class User {
 
     @Prop({default: ''})
     orgActualAddress: string;
+
+    @Prop()
+    sbbRefreshToken: string
+    
+    @Prop()
+    sbbAccessToken: string
+
+    @Prop()
+    scope: string
     
 }
 

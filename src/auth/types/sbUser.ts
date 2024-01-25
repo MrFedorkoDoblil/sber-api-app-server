@@ -1,4 +1,4 @@
-export type SbidUser = {
+export type SbUser = {
     sub?: string;
     orgKpp?: string;
     OrgName?: string;

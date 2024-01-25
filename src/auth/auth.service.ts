@@ -5,17 +5,20 @@ import { User } from 'src/schemas/user.schema';
 import { AuthDto } from './dto/auth.dto';
 import { Sid } from 'src/schemas/sid.schema';
 import { customAlphabet } from 'nanoid';
-import * as dotenv from 'dotenv';
-import { SbidUser } from './types/sbidUser';
+import { SbUser } from './types/sbUser';
 import { schemaHas } from 'src/services/schemaHas';
-dotenv.config();
+import { ConfigService } from '@nestjs/config';
+import { HttpService } from '@nestjs/axios';
+import { configuredHttpsAgent } from 'src/main';
 
 @Injectable()
 export class AuthService {
     constructor(
         @InjectModel(User.name) private readonly userModel:Model<User>,
-        @InjectModel(Sid.name) private readonly sidModel: Model<Sid>
-        ){}
+        @InjectModel(Sid.name) private readonly sidModel: Model<Sid>,
+        private readonly configService: ConfigService,
+        private readonly httpService: HttpService,
+    ){}
 
     async auth(body: AuthDto){
         const {login, password} = body;
@@ -39,60 +42,72 @@ export class AuthService {
      * parameters from SberBusiness API
      */
     async sberBusinessIdAuth(code:string, state: string){
-        console.log('code', code);
-        console.log('state', state);
+
         const isState = await this.sidModel.findOne({sid:state});
         if(!isState) {
             throw new ForbiddenException();
         }
-        console.log(process.env.SB_ID_TOKEN_URL);
-        try {
-            const response: any = await fetch(process.env.SB_ID_TOKEN_URL, {
-                headers: {
-                    'Content-type': 'application/x-www-form-urlencoded',
-                    'Accept': 'application/jose',
-                    'Access-Control-Allow-Origin': '*'
-                },
-                body: new URLSearchParams({
-                    'grant_type': 'authorization_code',
-                    'code': code,
-                    'client_id': process.env.SB_ID_AUTH_CLIENT_ID,
-                    'redirect_uri': process.env.SB_ID_AUTH_REDIRECT_URI,
-                    'client_secret': process.env.SB_ID_CLIENT_SECRET 
-                }),
-                method: 'post',
-                cache: 'no-cache'
-            })
-            if (response.status !== 200) throw new UnauthorizedException();
-        const {
-            access_token, 
-            token_type, 
-            refresh_token,
-            id_token,
-        } = response
-        let token: string = '';
-        await fetch(process.env.SB_ID_AUTH_USER_INFO_URL, {
-            headers: {
-                'Authorization': `${token_type} ${access_token}`
-            },
-        }).then(data => data.json()).then(data => token = data)
-        if(!token) throw new BadRequestException();
-        const [, payload] = token.split('.');
-        const sbidUser: SbidUser = JSON.parse(Buffer.from(payload, 'base64').toString());
-        if (!sbidUser.sub) return new BadRequestException();
-        const user = await this.userModel.findOne({sub: sbidUser.sub});
-        if(!user){
-            const newUser = new this.userModel({
-                refreshToken: refresh_token,
-                idToken: id_token,
-            })
-            for(const key in sbidUser){
-                if(schemaHas(newUser, key)) newUser[key] = sbidUser[key]
-            }
-            await newUser.save();
-        } else {
-            user.updateOne({refreshToken: refresh_token, idToken: id_token});
+        const sbidTokenUrl = this.configService.get('SB_ID_TOKEN_URL')
+        const sbidAuthUserUrl = this.configService.get('SB_ID_AUTH_USER_INFO_URL')
+        const sbidAuthClientId = this.configService.get('SB_ID_AUTH_CLIENT_ID')
+        const sbidAuthRedirectUri = this.configService.get('SB_ID_AUTH_REDIRECT_URI')
+        const sbidClientSecret = this.configService.get('SB_ID_CLIENT_SECRET')
+        const headers = {
+            'Content-type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/jose',
+            'Access-Control-Allow-Origin': '*'
+        };
+        const body = {
+            'grant_type': 'authorization_code',
+            'code': code,
+            'client_id': sbidAuthClientId,
+            'redirect_uri': sbidAuthRedirectUri,
+            'client_secret': sbidClientSecret, 
         }
+        
+        try {
+            const response = await this.httpService.axiosRef.post(sbidTokenUrl, body, {
+                headers,
+                httpsAgent: configuredHttpsAgent,
+            })
+    
+            if (response.status !== 200) throw new UnauthorizedException();
+            const {
+                access_token, 
+                token_type, 
+                refresh_token,
+                id_token,
+            } = response.data
+
+            const responseUser = await this.httpService.axiosRef.get(sbidAuthUserUrl, {
+                headers: {
+                    'Authorization': `${token_type} ${access_token}`,
+                },
+                httpsAgent: configuredHttpsAgent,
+            })
+
+            if (responseUser.status !== 200) throw new UnauthorizedException();
+
+            const openIdToken = responseUser?.data;
+            if(!openIdToken) throw new BadRequestException();
+            const [, payload] = openIdToken.split('.');
+            const sbUser: SbUser = JSON.parse(Buffer.from(payload, 'base64').toString());
+            const { sub } = sbUser;
+            if(!sub) throw new BadRequestException;
+            const user = await this.userModel.findOne({sub});
+        
+            if(!user){
+                const newUser = new this.userModel({
+                    refreshToken: refresh_token,
+                    idToken: id_token,
+                })
+                for(const key in sbUser){
+                    if(schemaHas(newUser, key)) newUser[key] = sbUser[key]
+                }
+                await newUser.save();
+            } else {
+                user.updateOne({refreshToken: refresh_token, idToken: id_token});
+            }
         } catch (error) {
             console.log(error)
             throw new InternalServerErrorException()
