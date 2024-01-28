@@ -19,7 +19,7 @@ export class AuthGuard implements CanActivate {
         const secret = this.configService.get('JWT_SECRET');
         const request = context.switchToHttp().getRequest();
         const token = this.extractTokenFromHeader(request);
-        if (!token) throw new UnauthorizedException();
+        if (!token) throw new UnauthorizedException('No access_token was provided in request header');
         
         try {
             const payload = await this.jwtService.verifyAsync(
@@ -28,13 +28,13 @@ export class AuthGuard implements CanActivate {
                 secret
             }
             );
-
             request['user'] = payload;
         } catch {
-            throw new UnauthorizedException();
+            throw new UnauthorizedException('Access_token validation failed');
         }
         return true;
-        }
+    }
+
     
     private extractTokenFromHeader(request: Request): string | undefined {
         const [type, token] = request.headers.authorization?.split(' ') ?? [];

@@ -12,11 +12,12 @@ export class CompanyController {
     @UseGuards(AuthGuard)
     @Get()
     async getCompanyInfo(@Request() req){
-        await this.companyService.getCompany(req.user)
+        return await this.companyService.getCompany(req.user)
     }
 
+    
     @Get('fake')
     getFakeCompanyInfo(){
-        this.companyService.fakeGetCompany()
+        return this.companyService.fakeGetCompany()
     }
 }

@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from 'src/schemas/user.schema';
 import { Sid, SidSchema } from 'src/schemas/sid.schema';
 import { HttpModule } from '@nestjs/axios';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports:[
@@ -13,6 +14,7 @@ import { HttpModule } from '@nestjs/axios';
       {name: Sid.name, schema: SidSchema},
     ]),
     HttpModule,
+    JwtModule,
   ],
   controllers: [AuthController],
   providers: [AuthService]

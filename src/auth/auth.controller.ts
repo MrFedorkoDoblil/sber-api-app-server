@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Post,  Query,  Redirect } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Post,  Query,  Redirect } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthDto } from './dto/auth.dto';
 import * as dotenv from 'dotenv'
@@ -14,6 +14,11 @@ export class AuthController {
     @Post()
     async login(@Body() body: AuthDto){
         return await this.authService.auth(body)
+    }
+
+    @Get('emit/:sub')
+    emitJwt(@Param() params){
+        return this.authService.handleEmitJWT(params.sub)
     }
 
 

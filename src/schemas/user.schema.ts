@@ -30,6 +30,9 @@ export class User {
     orgActualAddress: string;
 
     @Prop()
+    sbbReserveRefreshToken: string
+
+    @Prop({default: ''})
     sbbRefreshToken: string
     
     @Prop()

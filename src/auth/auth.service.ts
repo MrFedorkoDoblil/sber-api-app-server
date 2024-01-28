@@ -10,6 +10,7 @@ import { schemaHas } from 'src/services/schemaHas';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { configuredHttpsAgent } from 'src/main';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
@@ -18,6 +19,7 @@ export class AuthService {
         @InjectModel(Sid.name) private readonly sidModel: Model<Sid>,
         private readonly configService: ConfigService,
         private readonly httpService: HttpService,
+        private readonly jwtService: JwtService,
     ){}
 
     async auth(body: AuthDto){
@@ -117,6 +119,18 @@ export class AuthService {
 
     async refreshToken(){
         return 'here will be implementation of token routing'
+    }
+
+    async handleEmitJWT(sub){
+        return await this.jwtService.sign(
+            {
+                sub
+            },
+            {
+                expiresIn: 72000,
+                secret: this.configService.get('JWT_SECRET'),
+            },
+        )
     }
 
 
