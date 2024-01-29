@@ -30,7 +30,7 @@ export class CompanyService {
         try {
             return await this.globalService.reauthSbRequest(
                 'get',
-                `${this.configService.get('SB_ID_BASE')}fintech/api/v1/client-info`,
+                this.globalService.composeUrl('fintech/api/v1/client-info'),
                 sbbAccessToken,
             )
 

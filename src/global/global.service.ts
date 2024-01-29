@@ -20,6 +20,20 @@ export class GlobalService {
 
 
     /**
+     * The `composeUrl` function returns a composed URL by concatenating the base URL and the endpoint.
+     * @param {string} endpoint - The endpoint parameter is a string that represents the specific
+     * endpoint or route of the API that you want to compose the URL for. It could be something like
+     * "/users" or "/products".
+     * @param {boolean} [env=false] - A boolean value indicating whether the environment is set to true
+     * or false. If set tu true  the endpoint parameter should be name of env variable ex: "SB_ID_URL"
+     * @returns a URL string.
+     */
+    composeUrl(endpoint: string, env: boolean = false){
+       if (env) return this.configService.get('SB_ID_BASE_URL') + this.configService.get(endpoint)
+       if (!env) return this.configService.get('SB_ID_BASE_URL') + endpoint
+    }
+
+    /**
      * The `reauthSbRequest` function is an asynchronous function that handles HTTP requests with
      * access token authentication and handles token refresh if the request returns a 401 or 403 status
      * code.
@@ -101,12 +115,12 @@ export class GlobalService {
                         }
                         )
                     }
-                throw new HttpException(data, es)
+                throw new HttpException({...data as object, step: '1/1'}, es)
             }),
             catchError((error: AxiosError) => {
-                if(!error.response) throw new BadRequestException()
+                if(!error.response) throw new BadRequestException({step: '2/1'})
                 const {data} = error.response;
-                throw new BadRequestException(data)
+                throw new BadRequestException({data, step: '2/2'})
             }),
             map(async res => {
                 if(!res.data){

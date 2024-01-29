@@ -11,6 +11,8 @@ import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { configuredHttpsAgent } from 'src/main';
 import { JwtService } from '@nestjs/jwt';
+import { Request } from 'express';
+
 
 @Injectable()
 export class AuthService {
@@ -22,13 +24,68 @@ export class AuthService {
         private readonly jwtService: JwtService,
     ){}
 
-    async auth(body: AuthDto){
+    async auth(body: AuthDto, res){
         const {login, password} = body;
         const user = await this.userModel.findOne({login})
         if (!user) throw new NotFoundException();
         const isPassword = password === user.password;
         if(!isPassword) throw new UnauthorizedException()
-        return "logged in"
+        const accessToken = await this.jwtService.sign(
+            {
+                sub: user.sub
+            },
+            {
+                expiresIn: +this.configService.get('JWT_ACCESS_EXPIRES'),
+                secret: this.configService.get('JWT_ACCESS_SECRET'),
+            },
+        )
+        const refreshToken = await this.jwtService.sign(
+            {
+                sub: user.sub
+            },
+            {
+                expiresIn: +this.configService.get('JWT_REFRESH_EXPIRES'),
+                secret: this.configService.get('JWT_REFRESH_SECRET'),
+            },
+        )
+        res.cookie('jwt', refreshToken, {
+            httpOnly: true,
+            maxAge: 3600000,
+            secure: true,
+        })
+        user.refreshToken = refreshToken;
+        await user.save();
+        return({accessToken})
+    }
+
+    async refresh(req: Request){
+        const refreshToken = req.cookies['jwt']
+        if(!refreshToken) throw new UnauthorizedException({message: 'no cookies were provided'});
+        const user = await this.userModel.findOne({refreshToken});
+        if(!user){throw new ForbiddenException({message: 'user was not found'})}
+        
+        try {
+
+            const payload = this.jwtService.verify(
+                refreshToken,
+                {
+                    secret: this.configService.get('JWT_REFRESH_SECRET'),
+                },
+            )
+            console.log(payload);
+            if (!payload?.sub || payload.sub !== user.sub) throw new ForbiddenException({message: 'mismatch user'})
+            const accessToken = this.jwtService.sign(
+                {sub: payload.sub}, 
+                {
+                    secret: this.configService.get('JWT_ACCESS_SECRET'),
+                    expiresIn: +this.configService.get('JWT_ACCESS_EXPIRES'),
+                }
+            )
+            return {accessToken}
+        } catch (error) {
+            console.log(error)
+            throw new ForbiddenException({message: 'catch scope'})
+        }
     }
 
     /**
@@ -49,11 +106,11 @@ export class AuthService {
         if(!isState) {
             throw new ForbiddenException();
         }
-        const sbidTokenUrl = this.configService.get('SB_ID_TOKEN_URL')
-        const sbidAuthUserUrl = this.configService.get('SB_ID_AUTH_USER_INFO_URL')
-        const sbidAuthClientId = this.configService.get('SB_ID_AUTH_CLIENT_ID')
-        const sbidAuthRedirectUri = this.configService.get('SB_ID_AUTH_REDIRECT_URI')
-        const sbidClientSecret = this.configService.get('SB_ID_CLIENT_SECRET')
+        const sbTokenUrl = this.configService.get('SB_ID_TOKEN_URL')
+        const sbAuthUserUrl = this.configService.get('SB_ID_AUTH_USER_INFO_URL')
+        const sbAuthClientId = this.configService.get('SB_ID_AUTH_CLIENT_ID')
+        const sbAuthRedirectUri = this.configService.get('SB_ID_AUTH_REDIRECT_URI')
+        const sbClientSecret = this.configService.get('SB_ID_CLIENT_SECRET')
         const headers = {
             'Content-type': 'application/x-www-form-urlencoded',
             'Accept': 'application/jose',
@@ -62,13 +119,13 @@ export class AuthService {
         const body = {
             'grant_type': 'authorization_code',
             'code': code,
-            'client_id': sbidAuthClientId,
-            'redirect_uri': sbidAuthRedirectUri,
-            'client_secret': sbidClientSecret, 
+            'client_id': sbAuthClientId,
+            'redirect_uri': sbAuthRedirectUri,
+            'client_secret': sbClientSecret, 
         }
         
         try {
-            const response = await this.httpService.axiosRef.post(sbidTokenUrl, body, {
+            const response = await this.httpService.axiosRef.post(sbTokenUrl, body, {
                 headers,
                 httpsAgent: configuredHttpsAgent,
             })
@@ -81,7 +138,7 @@ export class AuthService {
                 id_token,
             } = response.data
 
-            const responseUser = await this.httpService.axiosRef.get(sbidAuthUserUrl, {
+            const responseUser = await this.httpService.axiosRef.get(sbAuthUserUrl, {
                 headers: {
                     'Authorization': `${token_type} ${access_token}`,
                 },
@@ -117,42 +174,6 @@ export class AuthService {
         
     }
 
-    async refreshToken(){
-        return 'here will be implementation of token routing'
-    }
-
-    async handleEmitJWT(sub){
-        return await this.jwtService.sign(
-            {
-                sub
-            },
-            {
-                expiresIn: 72000,
-                secret: this.configService.get('JWT_SECRET'),
-            },
-        )
-    }
-
-
-    /**
-     * The function "getsids" retrieves all Session Ids
-     */
-    async getsids(){
-        return await this.sidModel.find();
-    }
-    async deletesids(){
-        const sids =  await this.sidModel.find();
-        sids.forEach(async sid => {
-            await sid.deleteOne();
-        })
-    }
-
-    /**
-     * The function generates authentication request parameters for a SberBusiness ID.
-     * It creates new Session id (sid) document, that expires in 120 sec for
-     * storing "state" and "nonce" unique values of unathorized user 
-     * @returns a URL string that includes the following parameters:
-     */
     async getAuthRequestParams(){
         const nid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 36);
         const sid = new this.sidModel({nonce: nid(), sid:nid()});
