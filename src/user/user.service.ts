@@ -12,11 +12,13 @@ export class UserService {
     @InjectModel(User.name) private readonly userModel: Model<User>
   ){}
   
+
   async create(createUserDto: CreateUserDto) {
     try {
       const newUser = await this.userModel.create({...createUserDto});
       await newUser.save();
     } catch (error) {
+      console.log(error);
       throw new InternalServerErrorException()
     }
 
@@ -28,15 +30,17 @@ export class UserService {
    * @param {UpdateUserDto} updateUserDto - An object containing the updated user data.
    */
   async insertTokensAndSub(updateUserDto: UpdateUserDto) {
-    const { login  } = updateUserDto
+    const { login,sbbAccessToken,sbbRefreshToken,scope,sub  } = updateUserDto
     const foundUser = await this.userModel.findOne({login});
-    if (!foundUser) throw new NotFoundException();
-    for(const key in updateUserDto){
-      if(key === 'login') return
-      foundUser[key] = updateUserDto[key]
-    }
+    if (!foundUser) throw new NotFoundException({
+      message: 'No user with this login'
+    });
+    if(sbbAccessToken) foundUser.sbbAccessToken = sbbAccessToken;
+    if(sbbRefreshToken) foundUser.sbbRefreshToken = sbbRefreshToken;
+    if(scope) foundUser.scope = scope;
+    if(sub) foundUser.sub = sub;
     await foundUser.save();
-    return {message: 'udated'} 
+    return {message: 'updated'} 
   }
 
   findOne(id: number) {
