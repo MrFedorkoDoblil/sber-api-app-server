@@ -25,3 +25,4 @@ SB_ID_AUTH_SCOPE = inn ogrn openid email
 4. Заполнить данные из СберБизнесID по маршруту "/user  PATCH".  Передать в тело запроса "sbbAccessToken", "sbbRefreshToken", "sub", "scope"- данные полученные при входе через SBBID
 5. Авторизоваться по маршруту "/auth POST" -  Передать в тело запроса 'login' , 'password'. Ответ - значение  accessToken.
 6. Отправить запрос на получение данных о компании "/company GET" "Authorization": "Bearer <accessToken>", где "accessToken" - значение полученное в п.5
+7. Отправить запрос на получение мок-данных о компании "/company/fake GET" "Authorization": "Bearer <accessToken>", где "accessToken" - значение полученное в п.5

@@ -15,7 +15,7 @@ export class CompanyController {
         return await this.companyService.getCompany(req.user)
     }
 
-    
+    @UseGuards(AuthGuard)
     @Get('fake')
     getFakeCompanyInfo(){
         return this.companyService.fakeGetCompany()
