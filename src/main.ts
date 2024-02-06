@@ -6,8 +6,10 @@ import { Agent } from 'https'
 import * as cookieParser from 'cookie-parser';
 dotenv.config()
 
+
 const httpsOptions = {
-  pfx: readFileSync('./certs/SberBusinessAPI08092023.pfx'),
+  // pfx: readFileSync('./certs/cert.pfx'),
+  pfx: readFileSync('./certs/cert2.pfx'),
   passphrase: 'testtest',
   rejectUnauthorized: false,
 };
@@ -19,6 +21,7 @@ async function bootstrap() {
     httpsOptions
   })
   app.use(cookieParser());
+  app.enableCors({origin: true});
   await app.listen(3001)
 }
 bootstrap()

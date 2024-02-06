@@ -6,7 +6,7 @@ import { Response, Request } from 'express';
 import { configuredHttpsAgent } from 'src/main';
 dotenv.config();
 
-@Controller('auth')
+@Controller()
 export class AuthController {
     constructor(
         private readonly authService: AuthService
@@ -18,25 +18,28 @@ export class AuthController {
         return await this.authService.auth(body, res)
     }
 
-    @Get('refresh')
+    @Get('auth/refresh')
     async refresh(@Req() req: Request){
-        console.log('here');
         return this.authService.refresh(req)
     }
 
-    @Get('sbid')
+    @Get('auth/sbid')
     @Redirect('', 302)
     async redirect(){
         const url = await this.authService.getAuthRequestParams();
         if(!url) throw new BadRequestException();
-        console.log(url);
         return({url, secureProtocol: 'SSLv3_method', httpsAgent: configuredHttpsAgent})
     }
 
-    @Get('sbid/login')
+    @Get('login')
     async getToken(@Query('code') code: string, @Query('state') state: string){
         return await this.authService.sberBusinessIdAuth(code, state)
     }     
+    @Get('login/suc')
+    suc(){
+        return 'SUCCESS'
+    }
+
 }
 
 

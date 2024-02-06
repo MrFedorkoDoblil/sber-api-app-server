@@ -23,7 +23,6 @@ export class UserService {
     }
 
   }
-
   /**
    * The function `insertTokensAndSub` takes an `updateUserDto` object, finds a user with the specified
    * login, and then iterates over the properties of the `updateUserDto` object.

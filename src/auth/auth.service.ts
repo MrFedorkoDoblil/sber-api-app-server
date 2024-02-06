@@ -101,28 +101,30 @@ export class AuthService {
      * parameters from SberBusiness API
      */
     async sberBusinessIdAuth(code:string, state: string){
-
+        this.superlog('start sbid/login with code: ', code, "state: ", state );
         const isState = await this.sidModel.findOne({sid:state});
         if(!isState) {
+            this.superlog('not a state')
             throw new ForbiddenException();
         }
         const sbTokenUrl = this.configService.get('SB_ID_TOKEN_URL')
-        const sbAuthUserUrl = this.configService.get('SB_ID_AUTH_USER_INFO_URL')
         const sbAuthClientId = this.configService.get('SB_ID_AUTH_CLIENT_ID')
-        const sbAuthRedirectUri = this.configService.get('SB_ID_AUTH_REDIRECT_URI')
+        const sbAuthRedirectUri = this.configService.get('SB_ID_USER_INFO_URL')
         const sbClientSecret = this.configService.get('SB_ID_CLIENT_SECRET')
         const headers = {
             'Content-type': 'application/x-www-form-urlencoded',
-            'Accept': 'application/jose',
+            'Accept': 'application/json',
             'Access-Control-Allow-Origin': '*'
         };
         const body = {
             'grant_type': 'authorization_code',
             'code': code,
             'client_id': sbAuthClientId,
-            'redirect_uri': sbAuthRedirectUri,
+            'redirect_uri': 'https://localhost:3001/login',
             'client_secret': sbClientSecret, 
         }
+        this.superlog(headers)
+        this.superlog(body)
         
         try {
             const response = await this.httpService.axiosRef.post(sbTokenUrl, body, {
@@ -131,14 +133,17 @@ export class AuthService {
             })
     
             if (response.status !== 200) throw new UnauthorizedException();
+            this.superlog('RESPONSE STATIUS', response.status)
+            this.superlog("RESPONSE_DATA",response.data);
             const {
                 access_token, 
                 token_type, 
                 refresh_token,
                 id_token,
             } = response.data
-
-            const responseUser = await this.httpService.axiosRef.get(sbAuthUserUrl, {
+            this.superlog('SUCCESS_INITIALIZATION')
+            
+            const responseUser = await this.httpService.axiosRef.get(sbAuthRedirectUri, {
                 headers: {
                     'Authorization': `${token_type} ${access_token}`,
                 },
@@ -146,16 +151,17 @@ export class AuthService {
             })
 
             if (responseUser.status !== 200) throw new UnauthorizedException();
-
+            this.superlog('responseUser',responseUser?.data)
             const openIdToken = responseUser?.data;
             if(!openIdToken) throw new BadRequestException();
             const [, payload] = openIdToken.split('.');
             const sbUser: SbUser = JSON.parse(Buffer.from(payload, 'base64').toString());
             const { sub } = sbUser;
-            if(!sub) throw new BadRequestException;
+            if(!sub) throw new BadRequestException();
             const user = await this.userModel.findOne({sub});
         
             if(!user){
+                this.superlog('!user')
                 const newUser = new this.userModel({
                     refreshToken: refresh_token,
                     idToken: id_token,
@@ -178,14 +184,23 @@ export class AuthService {
         const nid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 36);
         const sid = new this.sidModel({nonce: nid(), sid:nid()});
         await sid.save();
-        const scope = process.env.SB_ID_AUTH_SCOPE.split(' ').join('%20');
+        const scope = process.env.SB_ID_AUTH_SCOPE
         const response_type = 'code';
         const state = sid.sid;
         const nonce = sid.nonce;
-        const redirect_uri = process.env.SB_ID_AUTH_REDIRECT_URI.replaceAll(':', '%3A').replaceAll('/', '%3F');
+        const redirect_uri = process.env.SB_ID_AUTH_REDIRECT_URI
+
         
         if(!scope || !state || !nonce || !redirect_uri) throw new BadRequestException();
          
         return `${process.env.SB_ID_AUTH_URL}?scope=${scope}&response_type=${response_type}&client_id=${process.env.SB_ID_AUTH_CLIENT_ID}&state=${state}&nonce=${nonce}&redirect_uri=${redirect_uri}`
+    }
+
+    private superlog(...args: any[]){
+        console.log('-----------------------------------');
+        console.log('-----------------------------------');
+        console.log(args);
+        console.log('-----------------------------------');
+        console.log('-----------------------------------');
     }
 }
