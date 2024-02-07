@@ -29,8 +29,8 @@ export class GlobalService {
      * @returns a URL string.
      */
     composeUrl(endpoint: string, env: boolean = false){
-       if (env) return this.configService.get('SB_ID_BASE_URL') + this.configService.get(endpoint)
-       if (!env) return this.configService.get('SB_ID_BASE_URL') + endpoint
+       if (env) return this.configService.get('SBB_BASE_URL') + this.configService.get(endpoint)
+       if (!env) return this.configService.get('SBB_BASE_URL') + endpoint
     }
 
     /**

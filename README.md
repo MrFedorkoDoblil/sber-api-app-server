@@ -12,7 +12,7 @@ SB_ID_AUTH_CLIENT_ID = 111333
 SB_ID_CLIENT_SECRET = qwerty123
 
 # Sberbusiness ID AUTHORIZATION endpoints
-SB_ID_BASE_URL = https://edupirfintech.sberbank.ru:9443/
+SBB_BASE_URL = https://edupirfintech.sberbank.ru:9443/
 SB_ID_AUTH_URL = https://edupirfintech.sberbank.ru:9443/ic/sso/api/v2/oauth/authorize
 SB_ID_TOKEN_URL = https://edupirfintech.sberbank.ru:9443/ic/sso/api/v2/oauth/token
 SB_ID_USER_INFO_URL = https://edupirfintech.sberbank.ru:9443/ic/sso/api/v2/oauth/user-info
