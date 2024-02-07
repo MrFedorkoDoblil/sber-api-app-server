@@ -6,12 +6,13 @@ import { AuthDto } from './dto/auth.dto';
 import { Sid } from 'src/schemas/sid.schema';
 import { customAlphabet } from 'nanoid';
 import { SbUser } from './types/sbUser';
-import { schemaHas } from 'src/services/schemaHas';
+import { schemaHas } from 'src/utils/schemaHas';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { configuredHttpsAgent } from 'src/main';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { GlobalService } from 'src/global/global.service';
 
 
 @Injectable()
@@ -22,6 +23,7 @@ export class AuthService {
         private readonly configService: ConfigService,
         private readonly httpService: HttpService,
         private readonly jwtService: JwtService,
+        private readonly globalservice: GlobalService,
     ){}
 
     async auth(body: AuthDto, res){
@@ -101,10 +103,8 @@ export class AuthService {
      * parameters from SberBusiness API
      */
     async sberBusinessIdAuth(code:string, state: string){
-        this.superlog('start sbid/login with code: ', code, "state: ", state );
         const isState = await this.sidModel.findOne({sid:state});
         if(!isState) {
-            this.superlog('not a state')
             throw new ForbiddenException();
         }
         const sbTokenUrl = this.configService.get('SB_ID_TOKEN_URL')
@@ -123,8 +123,6 @@ export class AuthService {
             'redirect_uri': 'https://localhost:3001/login',
             'client_secret': sbClientSecret, 
         }
-        this.superlog(headers)
-        this.superlog(body)
         
         try {
             const response = await this.httpService.axiosRef.post(sbTokenUrl, body, {
@@ -133,15 +131,12 @@ export class AuthService {
             })
     
             if (response.status !== 200) throw new UnauthorizedException();
-            this.superlog('RESPONSE STATIUS', response.status)
-            this.superlog("RESPONSE_DATA",response.data);
             const {
                 access_token, 
                 token_type, 
                 refresh_token,
                 id_token,
             } = response.data
-            this.superlog('SUCCESS_INITIALIZATION')
             
             const responseUser = await this.httpService.axiosRef.get(sbAuthRedirectUri, {
                 headers: {
@@ -151,7 +146,6 @@ export class AuthService {
             })
 
             if (responseUser.status !== 200) throw new UnauthorizedException();
-            this.superlog('responseUser', responseUser?.data)
             const openIdToken = responseUser?.data;
             if(!openIdToken) throw new BadRequestException();
             const [, payload] = openIdToken.split('.');
@@ -161,7 +155,6 @@ export class AuthService {
             const user = await this.userModel.findOne({sub});
         
             if(!user){
-                this.superlog('!user')
                 const {login, password} = this.generateCredentials()
                 const newUser = new this.userModel({
                     sbbRefreshToken: refresh_token,
@@ -191,14 +184,7 @@ export class AuthService {
             password: nid()
         }
     }
-    private superlog(...args: any[]){
-        console.log('-----------------------------------');
-        console.log('-----------------------------------');
-        console.log(args);
-        console.log('-----------------------------------');
-        console.log('-----------------------------------');
-    }
-    
+      
     async getAuthRequestParams(){
         const nid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 36);
         const sid = new this.sidModel({nonce: nid(), sid:nid()});
