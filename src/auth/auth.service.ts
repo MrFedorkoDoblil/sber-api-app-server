@@ -162,9 +162,13 @@ export class AuthService {
         
             if(!user){
                 this.superlog('!user')
+                const {login, password} = this.createCredentials()
                 const newUser = new this.userModel({
-                    refreshToken: refresh_token,
+                    sbbRefreshToken: refresh_token,
+                    sbbAccessToken: access_token,
                     idToken: id_token,
+                    login,
+                    password,
                 })
                 for(const key in sbUser){
                     if(schemaHas(newUser, key)) newUser[key] = sbUser[key]
@@ -173,11 +177,20 @@ export class AuthService {
             } else {
                 user.updateOne({refreshToken: refresh_token, idToken: id_token});
             }
+            return
         } catch (error) {
             console.log(error)
             throw new InternalServerErrorException()
         }
         
+    }
+
+    private createCredentials(){
+        const nid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 9);
+        return {
+            login: 'user_'+nid(), 
+            password: nid(),
+        }
     }
 
     async getAuthRequestParams(){
