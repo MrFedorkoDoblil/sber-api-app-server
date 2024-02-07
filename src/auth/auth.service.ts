@@ -151,7 +151,7 @@ export class AuthService {
             })
 
             if (responseUser.status !== 200) throw new UnauthorizedException();
-            this.superlog('responseUser',responseUser?.data)
+            this.superlog('responseUser', responseUser?.data)
             const openIdToken = responseUser?.data;
             if(!openIdToken) throw new BadRequestException();
             const [, payload] = openIdToken.split('.');
@@ -162,9 +162,13 @@ export class AuthService {
         
             if(!user){
                 this.superlog('!user')
+                const {login, password} = this.generateCredentials()
                 const newUser = new this.userModel({
-                    refreshToken: refresh_token,
+                    sbbRefreshToken: refresh_token,
+                    sbbAccessToken: access_token,
                     idToken: id_token,
+                    login,
+                    password,
                 })
                 for(const key in sbUser){
                     if(schemaHas(newUser, key)) newUser[key] = sbUser[key]
@@ -180,6 +184,21 @@ export class AuthService {
         
     }
 
+    private generateCredentials(){
+        const nid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 9);
+        return {
+            login: 'user'+nid(),
+            password: nid()
+        }
+    }
+    private superlog(...args: any[]){
+        console.log('-----------------------------------');
+        console.log('-----------------------------------');
+        console.log(args);
+        console.log('-----------------------------------');
+        console.log('-----------------------------------');
+    }
+    
     async getAuthRequestParams(){
         const nid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 36);
         const sid = new this.sidModel({nonce: nid(), sid:nid()});
@@ -196,11 +215,4 @@ export class AuthService {
         return `${process.env.SB_ID_AUTH_URL}?scope=${scope}&response_type=${response_type}&client_id=${process.env.SB_ID_AUTH_CLIENT_ID}&state=${state}&nonce=${nonce}&redirect_uri=${redirect_uri}`
     }
 
-    private superlog(...args: any[]){
-        console.log('-----------------------------------');
-        console.log('-----------------------------------');
-        console.log(args);
-        console.log('-----------------------------------');
-        console.log('-----------------------------------');
-    }
 }
