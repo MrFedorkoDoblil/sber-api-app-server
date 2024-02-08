@@ -27,18 +27,15 @@ export class AuthController {
     @Redirect('', 302)
     async redirect(){
         const url = await this.authService.getAuthRequestParams();
+        console.log(url);
         if(!url) throw new BadRequestException();
         return({url, secureProtocol: 'SSLv3_method', httpsAgent: configuredHttpsAgent})
     }
 
     @Get('login')
-    async getToken(@Query('code') code: string, @Query('state') state: string){
-        return await this.authService.sberBusinessIdAuth(code, state)
+    async getToken(@Query('code') code: string, @Query('state') state: string, @Res() res: Response){
+        return await this.authService.sberBusinessIdAuth(code, state, res)
     }     
-    @Get('login/suc')
-    suc(){
-        return 'SUCCESS'
-    }
 
 }
 

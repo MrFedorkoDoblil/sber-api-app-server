@@ -1,11 +1,10 @@
 import { HttpService } from '@nestjs/axios';
-import { BadRequestException, HttpException, Injectable, UnauthorizedException} from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpException, Injectable, UnauthorizedException} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { AxiosError, AxiosRequestConfig } from 'axios';
+import {  AxiosError, AxiosRequestConfig } from 'axios';
 import { Model } from 'mongoose';
-import { lastValueFrom } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { firstValueFrom, lastValueFrom,  } from 'rxjs';
 import { configuredHttpsAgent } from 'src/main';
 import { User } from 'src/schemas/user.schema';
 import { PathTree } from './types/types';
@@ -19,9 +18,11 @@ export class GlobalService {
         private readonly httpService: HttpService,
     ){}
 
+    /* The `sbbPathTree` is an object that represents the structure of the API endpoints for a specific
+    service. It is used to construct the URL for making HTTP requests to these endpoints. */
     private readonly sbbPathTree: PathTree = {
         base: {
-            url: this.configService.get('BASE_URL'),
+            url: this.configService.get('SB_ID_BASE_URL'),
             children:[
                 {
                     auth: {
@@ -39,33 +40,39 @@ export class GlobalService {
                             },
                             {
                                 clientInfo: {
-                                    url: '/client-info'
+                                    url: '/user-info'
                                 }
                             }
                         ]
                     },
 
                 },
-                {
-                    fintech: {
-                        url: '/fintech',
-                        children: [
-                            {
-                                clientInfo: {
-                                    url: '/v1/client-info' 
-                                }
-                            },
-                            {
-
-                            }
-                        ]
-                    }
-                }
             ]
         }
     }
 
-    getSbbUrl(str: string, tree: PathTree = this.sbbPathTree){
+    private readonly sbbFintechTree: PathTree = {
+        base: {
+            url: this.configService.get('SB_FINTECH_BASE_URL'),
+            children: [
+                {
+                    clientInfo: {
+                        url: '/v1/client-info' 
+                    }
+                },
+            ]
+        }
+    }
+
+    getSbbUrl(str: string){
+        return this.getUrl(str, this.sbbPathTree)
+    }
+
+    getFintechUrl(str: string){
+        return this.getUrl(str, this.sbbFintechTree)
+    }
+
+    private getUrl(str: string, tree: PathTree = this.sbbPathTree){
         if(!str || !tree.base.url) return ''
         const points = str.split('.')
         const resultArray = [tree.base.url,]
@@ -143,61 +150,66 @@ export class GlobalService {
             }
         }
 
-
-
+        let responseData: Record<string, any> | undefined
+        let responseError: HttpException
         const user = await this.userModel.findOne({sbbAccessToken: accessToken});
         if(!user) throw new UnauthorizedException();
         const refreshToken = user.sbbRefreshToken
 
-        return this.httpService[method](...([...handleOptions(accessToken)] as [string, any, any]))
-        .pipe(
-            map((res) => res.data),
-            catchError((error: AxiosError) => {
-                if(!error.response) throw new BadRequestException()
-                const {status: es, data} = error.response;
-                if(es === 401 || es === 403){
-                    return this.httpService.post(
-                        this.configService.get('SB_ID_TOKEN_URL'),
-                        {
-                            grant_type: 'refresh_token',
-                            client_id: this.configService.get('SB_ID_AUTH_CLIENT_ID'),
-                            refresh_token: refreshToken,
-                            client_secret: this.configService.get('SB_ID_CLIENT_SECRET'),
+        await lastValueFrom(this.httpService[method](...([...handleOptions(accessToken)] as [string, any, any])))
+        .then(res => {
+            responseData = res.data
+        })
+        .catch(async (error: AxiosError) => {
+            if(!error?.response?.status) {
+                responseError =  new BadRequestException;
+            }else 
+            if([401, 403].includes(error.response.status)){
+                await lastValueFrom(this.httpService.post(
+                    this.getSbbUrl('auth.token'),
+                    {
+                        grant_type: 'refresh_token',
+                        client_id: this.configService.get('SB_ID_AUTH_CLIENT_ID'),
+                        refresh_token: refreshToken,
+                        client_secret: this.configService.get('SB_ID_CLIENT_SECRET'),
+                    },
+                    {
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
                         },
-                        {
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded'
-                            },
-                            httpsAgent: configuredHttpsAgent,
-                        }
-                        )
+                        httpsAgent: configuredHttpsAgent,
                     }
-                throw new HttpException({...data as object, step: '1/1'}, es)
-            }),
-            catchError((error: AxiosError) => {
-                if(!error.response) throw new BadRequestException({step: '2/1'})
-                const {data} = error.response;
-                throw new BadRequestException({data, step: '2/2'})
-            }),
-            map(async res => {
-                if(!res.data){
-                    throw new BadRequestException()
-                }
-                const {access_token, refresh_token} = res.data;
-                if(!access_token || !refresh_token) throw new UnauthorizedException();
+                )
+
+            )
+            .then(async refreshRes => {
+                const {access_token, refresh_token} = refreshRes.data;
                 user.sbbAccessToken = access_token;
                 user.sbbRefreshToken = refresh_token;
-                user.sbbReserveRefreshToken = refreshToken;
                 await user.save();
-
-                const response = this.httpService[method](...([...handleOptions(access_token)] as [string, any, any]))
-                return lastValueFrom(response)
-                .then(res=> res.data)
-                .catch((error: AxiosError) => {
-                    throw new HttpException(error.message, 400)
+                await firstValueFrom(this.httpService[method](...([...handleOptions(access_token)] as [string, any, any])))
+                .then(retryRes => {
+                    responseData = retryRes.data
+                })
+                .catch(() => {
+                  responseError =  new BadRequestException()
                 })
             })
-        )   
+            .catch(() => {
+                responseError = new ForbiddenException()
+            })
+        
+        }
+    })
+
+    console.log(responseError);
+    console.log(responseData);
+    if(responseError) {
+        throw responseError
+    } else {
+        return responseData
+    }
+   
     }  
 }
 

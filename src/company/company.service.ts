@@ -2,7 +2,6 @@ import { BadRequestException, Injectable, InternalServerErrorException, NotFound
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { SbUser } from 'src/auth/types/sbUser';
 import { GlobalService } from 'src/global/global.service';
 import { companyResponse } from 'src/mocks/companyResponse';
 import { User } from 'src/schemas/user.schema';
@@ -21,20 +20,37 @@ export class CompanyService {
         return companyResponse;
     }
 
-    async getCompany(user: SbUser){
+    async getCompany(user: {sub: string}){
         const foundUser = await this.userModel.findOne({sub: user.sub});
-
+        console.log('user.sub', user.sub);
         if(!foundUser) throw new NotFoundException();
         const { sbbAccessToken } = foundUser;
-
+        console.log(this.globalService.getFintechUrl('clientInfo'),);
         try {
-            return await this.globalService.reauthSbRequest(
+            const res = await this.globalService.reauthSbRequest(
                 'get',
-                this.globalService.getSbbUrl('fintech.clientInfo'),
+                this.globalService.getFintechUrl('clientInfo'),
                 sbbAccessToken,
             )
 
+            console.log("RESPONSE FROM CONTROLLER_______________-");
+            console.log("RESPONSE FROM CONTROLLER_______________-");
+            console.log("RESPONSE FROM CONTROLLER_______________-");
+            console.log("RESPONSE FROM CONTROLLER_______________-");
+            console.log("RESPONSE FROM CONTROLLER_______________-");
+            console.log("RESPONSE FROM CONTROLLER_______________-");
+            console.log("RESPONSE FROM CONTROLLER", res);
+            console.log("RESPONSE FROM CONTROLLER_______________-");
+            console.log("RESPONSE FROM CONTROLLER_______________-");
+            console.log("RESPONSE FROM CONTROLLER_______________-");
+            console.log("RESPONSE FROM CONTROLLER_______________-");
+            console.log("RESPONSE FROM CONTROLLER_______________-");
+            console.log("RESPONSE FROM CONTROLLER_______________-");
+
+            return res
+
         } catch (error) {
+            console.log(error);
             throw new InternalServerErrorException({
                 message: 'Could not get client info',
                 statusCode: 500,

@@ -5,15 +5,13 @@ import { User } from 'src/schemas/user.schema';
 import { AuthDto } from './dto/auth.dto';
 import { Sid } from 'src/schemas/sid.schema';
 import { customAlphabet } from 'nanoid';
-import { SbUser } from './types/sbUser';
 import { schemaHas } from 'src/utils/schemaHas';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { configuredHttpsAgent } from 'src/main';
 import { JwtService } from '@nestjs/jwt';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { GlobalService } from 'src/global/global.service';
-
 
 @Injectable()
 export class AuthService {
@@ -26,7 +24,7 @@ export class AuthService {
         private readonly globalservice: GlobalService,
     ){}
 
-    async auth(body: AuthDto, res){
+    async auth(body: AuthDto, res: Response){
         const {login, password} = body;
         const user = await this.userModel.findOne({login})
         if (!user) throw new NotFoundException();
@@ -102,15 +100,19 @@ export class AuthService {
      * If user doesn't exist it creates new User document with corresponding 
      * parameters from SberBusiness API
      */
-    async sberBusinessIdAuth(code:string, state: string){
+    async sberBusinessIdAuth(code:string, state: string, res: Response){
         const isState = await this.sidModel.findOne({sid:state});
         if(!isState) {
             throw new ForbiddenException();
         }
-        const sbTokenUrl = this.configService.get('SB_ID_TOKEN_URL')
         const sbAuthClientId = this.configService.get('SB_ID_AUTH_CLIENT_ID')
-        const sbAuthRedirectUri = this.configService.get('SB_ID_USER_INFO_URL')
         const sbClientSecret = this.configService.get('SB_ID_CLIENT_SECRET')
+        const sbTokenUrl = this.globalservice.getSbbUrl('auth.token')
+        const sbAuthRedirectUri = this.globalservice.getSbbUrl('auth.clientInfo')
+        
+        // 2ND STAGE OAUTH (REQUEST CODE)
+        console.log(' BEGIN // 2ND STAGE OAUTH (EXCHANGE CODE TO TOKENS)');
+        
         const headers = {
             'Content-type': 'application/x-www-form-urlencoded',
             'Accept': 'application/json',
@@ -123,20 +125,24 @@ export class AuthService {
             'redirect_uri': 'https://localhost:3001/login',
             'client_secret': sbClientSecret, 
         }
-        
+
         try {
             const response = await this.httpService.axiosRef.post(sbTokenUrl, body, {
                 headers,
                 httpsAgent: configuredHttpsAgent,
             })
-    
             if (response.status !== 200) throw new UnauthorizedException();
+            
+            // 3RD STAGE OAUTH (EXCHANGE CODE TO TOKENS)
+
             const {
                 access_token, 
                 token_type, 
                 refresh_token,
                 id_token,
             } = response.data
+
+            console.log(' // 3RD STAGE OAUTH (EXCHANGE CODE TO TOKENS)', response.data);
             
             const responseUser = await this.httpService.axiosRef.get(sbAuthRedirectUri, {
                 headers: {
@@ -146,21 +152,43 @@ export class AuthService {
             })
 
             if (responseUser.status !== 200) throw new UnauthorizedException();
+
             const openIdToken = responseUser?.data;
             if(!openIdToken) throw new BadRequestException();
             const [, payload] = openIdToken.split('.');
-            const sbUser: SbUser = JSON.parse(Buffer.from(payload, 'base64').toString());
+            const sbUser = JSON.parse(Buffer.from(payload, 'base64').toString());
             const { sub } = sbUser;
             if(!sub) throw new BadRequestException();
+            
+            const accessToken = await this.jwtService.sign(
+                {
+                    sub
+                },
+                {
+                    expiresIn: +this.configService.get('JWT_ACCESS_EXPIRES'),
+                    secret: this.configService.get('JWT_ACCESS_SECRET'),
+                },
+            )
+            const refreshToken = await this.jwtService.sign(
+                {
+                    sub
+                },
+                {
+                    expiresIn: +this.configService.get('JWT_REFRESH_EXPIRES'),
+                    secret: this.configService.get('JWT_REFRESH_SECRET'),
+                },
+            )
             const user = await this.userModel.findOne({sub});
-        
+            
             if(!user){
                 const {login, password} = this.generateCredentials()
                 const newUser = new this.userModel({
+                    refreshToken,
                     sbbRefreshToken: refresh_token,
                     sbbAccessToken: access_token,
                     idToken: id_token,
                     login,
+                    sub,
                     password,
                 })
                 for(const key in sbUser){
@@ -168,11 +196,22 @@ export class AuthService {
                 }
                 await newUser.save();
             } else {
-                user.updateOne({refreshToken: refresh_token, idToken: id_token});
+                user.sbbRefreshToken = refresh_token, 
+                user.sbbAccessToken = access_token,
+                user.idToken =id_token
+                await user.save()
             }
+            res.cookie('jwt', refreshToken, {
+                httpOnly: true,
+                maxAge: 3600000,
+                secure: true,
+            })
+            res.json({message: 'success', accessToken})
         } catch (error) {
             console.log(error)
-            throw new InternalServerErrorException()
+            throw new InternalServerErrorException({
+                message: error?.data?.error_description ||  error?.data?.error || 'error'
+            })
         }
         
     }
@@ -186,6 +225,9 @@ export class AuthService {
     }
       
     async getAuthRequestParams(){
+
+        // 1ST STAGE OAUTH (REQUEST CODE)
+
         const nid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 36);
         const sid = new this.sidModel({nonce: nid(), sid:nid()});
         await sid.save();
@@ -195,10 +237,9 @@ export class AuthService {
         const nonce = sid.nonce;
         const redirect_uri = process.env.SB_ID_AUTH_REDIRECT_URI
 
-        
         if(!scope || !state || !nonce || !redirect_uri) throw new BadRequestException();
          
-        return `${process.env.SB_ID_AUTH_URL}?scope=${scope}&response_type=${response_type}&client_id=${process.env.SB_ID_AUTH_CLIENT_ID}&state=${state}&nonce=${nonce}&redirect_uri=${redirect_uri}`
+        return `${this.globalservice.getSbbUrl('auth.authorize')}?scope=${scope}&response_type=${response_type}&client_id=${process.env.SB_ID_AUTH_CLIENT_ID}&state=${state}&nonce=${nonce}&redirect_uri=${redirect_uri}`
     }
 
 }
