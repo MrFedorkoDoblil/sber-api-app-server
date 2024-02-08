@@ -8,6 +8,7 @@ import { lastValueFrom } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { configuredHttpsAgent } from 'src/main';
 import { User } from 'src/schemas/user.schema';
+import { PathTree } from './types/types';
 
 @Injectable()
 export class GlobalService {
@@ -18,20 +19,74 @@ export class GlobalService {
         private readonly httpService: HttpService,
     ){}
 
+    private readonly sbbPathTree: PathTree = {
+        base: {
+            url: this.configService.get('BASE_URL'),
+            children:[
+                {
+                    auth: {
+                        url: '/ic/sso/api/v2/oauth',
+                        children: [
+                            {
+                                authorize: {
+                                    url: '/authorize'
+                                }
+                            },
+                            {
+                                token: {
+                                    url:'/token'
+                                }
+                            },
+                            {
+                                clientInfo: {
+                                    url: '/client-info'
+                                }
+                            }
+                        ]
+                    },
 
-    /**
-     * The `composeUrl` function returns a composed URL by concatenating the base URL and the endpoint.
-     * @param {string} endpoint - The endpoint parameter is a string that represents the specific
-     * endpoint or route of the API that you want to compose the URL for. It could be something like
-     * "/users" or "/products".
-     * @param {boolean} [env=false] - A boolean value indicating whether the environment is set to true
-     * or false. If set tu true  the endpoint parameter should be name of env variable ex: "SB_ID_URL"
-     * @returns a URL string.
-     */
-    composeUrl(endpoint: string, env: boolean = false){
-       if (env) return this.configService.get('SBB_BASE_URL') + this.configService.get(endpoint)
-       if (!env) return this.configService.get('SBB_BASE_URL') + endpoint
+                },
+                {
+                    fintech: {
+                        url: '/fintech',
+                        children: [
+                            {
+                                clientInfo: {
+                                    url: '/v1/client-info' 
+                                }
+                            },
+                            {
+
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
     }
+
+    getSbbUrl(str: string, tree: PathTree = this.sbbPathTree){
+        if(!str || !tree.base.url) return ''
+        const points = str.split('.')
+        const resultArray = [tree.base.url,]
+        let current = tree.base
+        if(!current) return ''
+    
+    
+        points.forEach((item) => {
+            if(current?.children){
+                const hasItem = current.children.find(child => child[item]);
+                if(hasItem) {
+                    current = hasItem[item]
+                    resultArray.push(current.url);
+                }
+            } else{
+                resultArray.push (current[item]?.url)
+            }
+        })
+        return resultArray.join('')
+    } 
+
 
     /**
      * The `reauthSbRequest` function is an asynchronous function that handles HTTP requests with
@@ -87,6 +142,8 @@ export class GlobalService {
                 ]
             }
         }
+
+
 
         const user = await this.userModel.findOne({sbbAccessToken: accessToken});
         if(!user) throw new UnauthorizedException();
