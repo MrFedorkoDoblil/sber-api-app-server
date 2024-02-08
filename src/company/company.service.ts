@@ -1,8 +1,6 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { SbUser } from 'src/auth/types/sbUser';
 import { GlobalService } from 'src/global/global.service';
 import { companyResponse } from 'src/mocks/companyResponse';
 import { User } from 'src/schemas/user.schema';
@@ -11,7 +9,6 @@ import { User } from 'src/schemas/user.schema';
 export class CompanyService {
     constructor(
         @InjectModel(User.name) private readonly userModel: Model<User>,
-        private readonly configService: ConfigService,
         private readonly globalService: GlobalService,
 
     ){}
@@ -21,24 +18,20 @@ export class CompanyService {
         return companyResponse;
     }
 
-    async getCompany(user: SbUser){
+    async getCompany(user: {sub: string}){
         const foundUser = await this.userModel.findOne({sub: user.sub});
-
         if(!foundUser) throw new NotFoundException();
         const { sbbAccessToken } = foundUser;
 
         try {
-            return await this.globalService.reauthSbRequest(
+            const response =  await this.globalService.reauthSbRequest(
                 'get',
-                `${this.configService.get('SB_ID_BASE')}fintech/api/v1/client-info`,
+                this.globalService.getFintechUrl('clientInfo'),
                 sbbAccessToken,
             )
-
+            return response
         } catch (error) {
-            throw new InternalServerErrorException({
-                message: 'Could not get client info',
-                statusCode: 500,
-            });
+            throw error
         }
           
     }

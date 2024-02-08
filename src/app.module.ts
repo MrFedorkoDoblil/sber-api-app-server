@@ -5,9 +5,9 @@ import { AuthModule } from './auth/auth.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
 import { CompanyModule } from './company/company.module';
-import { UserModule } from './user/user.module';
 import { ConfigModule } from '@nestjs/config';
 import { GlobalModule } from './global/global.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [

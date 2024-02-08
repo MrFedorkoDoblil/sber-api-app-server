@@ -1,73 +1,28 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# Base env vars
+PORT=3000
+JWT_ACCESS_SECRET = qwerty123456
+JWT_ACCESS_EXPIRES = 72000
+JWT_REFRESH_SECRET = qwerty1234567
+JWT_REFRESH_EXPIRES = 72000
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+# SberbusinessAPI parameters from personal cabinet
+SB_ID_AUTH_REDIRECT_URI = https://localhost:3000/auth/login
+SB_ID_AUTH_CLIENT_ID = 111333
+SB_ID_CLIENT_SECRET = qwerty123
 
-## Description
+# Sberbusiness ID AUTHORIZATION endpoints
+SB_ID_BASE_URL = https://edupirfintech.sberbank.ru:9443/
+SB_ID_AUTH_URL = https://edupirfintech.sberbank.ru:9443/ic/sso/api/v2/oauth/authorize
+SB_ID_TOKEN_URL = https://edupirfintech.sberbank.ru:9443/ic/sso/api/v2/oauth/token
+SB_ID_USER_INFO_URL = https://edupirfintech.sberbank.ru:9443/ic/sso/api/v2/oauth/user-info
+SB_ID_AUTH_SCOPE = inn ogrn openid email
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Installation
-
-```bash
-$ npm install
-```
-
-## Running the app
-
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Test
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).
+# Запуск сервера в режиме разработки
+1. Заполнить переменные окружения
+2. Запустить MongoDB на порту 27018 ("docker-compose up -d" в текущей дирректории)
+3. Пока нет возможности входить по SBER Business ID необходимо создать пользователя по следующему маршруту "/user  POST". Передать в тело запроса 'login' , 'password'.
+4. Заполнить данные из СберБизнесID по маршруту "/user  PATCH".  Передать в тело запроса "sbbAccessToken", "sbbRefreshToken", "sub", "scope"- данные полученные при входе через SBBID
+5. Авторизоваться по маршруту "/auth POST" -  Передать в тело запроса 'login' , 'password'. Ответ - значение  accessToken.
+6. Отправить запрос на получение данных о компании "/company GET" "Authorization": "Bearer <accessToken>", где "accessToken" - значение полученное в п.5
+7. Отправить запрос на получение мок-данных о компании "/company/fake GET" "Authorization": "Bearer <accessToken>", где "accessToken" - значение полученное в п.5
