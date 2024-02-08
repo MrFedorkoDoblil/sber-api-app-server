@@ -72,7 +72,6 @@ export class AuthService {
                     secret: this.configService.get('JWT_REFRESH_SECRET'),
                 },
             )
-            console.log(payload);
             if (!payload?.sub || payload.sub !== user.sub) throw new ForbiddenException({message: 'mismatch user'})
             const accessToken = this.jwtService.sign(
                 {sub: payload.sub}, 

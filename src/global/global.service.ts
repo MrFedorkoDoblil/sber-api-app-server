@@ -18,9 +18,7 @@ export class GlobalService {
         private readonly httpService: HttpService,
     ){}
 
-    /* The `sbbPathTree` is an object that represents the structure of the API endpoints for a specific
-    service. It is used to construct the URL for making HTTP requests to these endpoints. */
-    private readonly sbbPathTree: PathTree = {
+    private readonly sbbAuthTree: PathTree = {
         base: {
             url: this.configService.get('SB_ID_BASE_URL'),
             children:[
@@ -65,14 +63,14 @@ export class GlobalService {
     }
 
     getSbbUrl(str: string){
-        return this.getUrl(str, this.sbbPathTree)
+        return this.getUrl(str, this.sbbAuthTree)
     }
 
     getFintechUrl(str: string){
         return this.getUrl(str, this.sbbFintechTree)
     }
 
-    private getUrl(str: string, tree: PathTree = this.sbbPathTree){
+    private getUrl(str: string, tree: PathTree = this.sbbAuthTree){
         if(!str || !tree.base.url) return ''
         const points = str.split('.')
         const resultArray = [tree.base.url,]
@@ -118,7 +116,6 @@ export class GlobalService {
         headers?: Record<string, string>,
         data?: any
         ){
-        
         const handleOptions = 
         (accessToken: string) : 
         [string, AxiosRequestConfig<any>] |
@@ -199,16 +196,16 @@ export class GlobalService {
                 responseError = new ForbiddenException()
             })
         
+        } else {
+            responseError =  new BadRequestException()
         }
     })
 
-    console.log(responseError);
-    console.log(responseData);
-    if(responseError) {
-        throw responseError
-    } else {
-        return responseData
-    }
+        if(responseError) {
+            throw responseError
+        } else {
+            return responseData
+        }
    
     }  
 }

@@ -6,7 +6,7 @@ export type PathTree = {
     }
 }
 
-const sbbPathTree = {
+const sbbAuthTree = {
     base: {
         url: '/some/url',
         children:[
@@ -47,7 +47,7 @@ const sbbPathTree = {
  * on the provided tree structure (tree).
  */
 
-export function getSbbUrl(str: string, tree: PathTree = sbbPathTree){
+export function getSbbUrl(str: string, tree: PathTree = sbbAuthTree){
     if(!str || !tree.base.url) return ''
     const points = str.split('.')
     const resultArray = [tree.base.url,]

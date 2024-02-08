@@ -19,7 +19,6 @@ export class AuthGuard implements CanActivate {
         const secret = this.configService.get('JWT_ACCESS_SECRET');
         const request = context.switchToHttp().getRequest();
         const token = this.extractTokenFromHeader(request);
-        console.log('token', token);
         if (!token) throw new UnauthorizedException('No access_token was provided in request header');
         try {
             const payload = await this.jwtService.verifyAsync(
