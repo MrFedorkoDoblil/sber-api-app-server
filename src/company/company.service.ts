@@ -1,5 +1,4 @@
-import { BadRequestException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { GlobalService } from 'src/global/global.service';
@@ -10,7 +9,6 @@ import { User } from 'src/schemas/user.schema';
 export class CompanyService {
     constructor(
         @InjectModel(User.name) private readonly userModel: Model<User>,
-        private readonly configService: ConfigService,
         private readonly globalService: GlobalService,
 
     ){}
@@ -26,16 +24,14 @@ export class CompanyService {
         const { sbbAccessToken } = foundUser;
 
         try {
-            return await this.globalService.reauthSbRequest(
+            const response =  await this.globalService.reauthSbRequest(
                 'get',
                 this.globalService.getFintechUrl('clientInfo'),
                 sbbAccessToken,
             )
+            return response
         } catch (error) {
-            throw new InternalServerErrorException({
-                message: 'Could not get client info',
-                statusCode: 500,
-            });
+            throw error
         }
           
     }
