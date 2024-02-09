@@ -46,6 +46,29 @@ export const sbbFintechTree: PathTree = {
             {
                 clientInfo: {
                     url: '/v1/client-info' 
+                },
+                account:{
+                    url: '/v2/statement',
+                    children: [
+                        {
+                            transactions: {
+                                url: '/tarnsactions'
+                            },
+                            transactionsId: {
+                                url: '/transactionsId',
+                                children:[
+                                    {
+                                        print: {
+                                            url: '/print'
+                                        }
+                                    }
+                                ]
+                            },
+                            summary: {
+                                url: '/summary'
+                            }
+                        }
+                    ]
                 }
             },
         ]

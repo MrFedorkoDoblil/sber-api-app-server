@@ -7,12 +7,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { GlobalService } from 'src/global/global.service';
   
 @Injectable()
 export class AuthGuard implements CanActivate {
     constructor(
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService,
+        private readonly globalService: GlobalService
     ){}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -27,7 +29,9 @@ export class AuthGuard implements CanActivate {
                 secret
             }
             );
+            const sbbAccessToken = await this.globalService.checkUserBySub({sub: payload});
             request['user'] = payload;
+            request['sbbAccessToken'] = sbbAccessToken;
         } catch {
             throw new UnauthorizedException('Access_token validation failed');
         }

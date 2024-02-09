@@ -48,6 +48,14 @@ export class GlobalService {
         return resultArray.join('')
     } 
 
+    async checkUserBySub(user: {sub: string}){
+        const foundUser = await this.userModel.findOne({sub: user.sub});
+        if(!foundUser) throw new UnauthorizedException('Token validation failed')
+        const token =  foundUser.sbbAccessToken;
+        if(!token) throw new ForbiddenException()
+        return token
+    }
+
 
     /**
      * The `reauthSbRequest` function is an asynchronous function that handles HTTP requests with

@@ -1,8 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { GlobalService } from 'src/global/global.service';
-import { companyResponse } from 'src/mocks/companyResponse';
 import { User } from 'src/schemas/user.schema';
 
 @Injectable()
@@ -13,10 +12,6 @@ export class CompanyService {
 
     ){}
 
-    fakeGetCompany(){
-        if(!companyResponse) throw new BadRequestException()
-        return companyResponse;
-    }
 
     async getCompany(user: {sub: string}){
         const foundUser = await this.userModel.findOne({sub: user.sub});
