@@ -12,7 +12,7 @@ import { AccountModule } from './account/account.module';
 
 @Module({
   imports: [
-    MongooseModule.forRoot('mongodb://root:example@localhost:27018/'),
+    MongooseModule.forRoot('mongodb://root:example@mongo:27017/'),
     ConfigModule.forRoot({
       envFilePath: '../.env',
       isGlobal: true,

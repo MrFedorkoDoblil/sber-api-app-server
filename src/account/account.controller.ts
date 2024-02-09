@@ -22,4 +22,17 @@ export class AccountController {
       req.user,
     );
   }
+  async getTransactionOperations(
+    @Query('accountNumber') accountNumber: string, 
+    @Query('operationDate') operationDate: string,
+    @Query('id') id: string,
+    @Req() req: {user: {sub: string, sbbAccessToken: string}},
+    ){
+    return await this.accountService.getTransactionOperations(
+      accountNumber,
+      id,
+      operationDate,
+      req.user,
+    );
+  }
 }
