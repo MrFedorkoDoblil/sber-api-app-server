@@ -29,9 +29,8 @@ export class AuthGuard implements CanActivate {
                 secret
             }
             );
-            const sbbAccessToken = await this.globalService.checkUserBySub({sub: payload});
-            request['user'] = payload;
-            request['sbbAccessToken'] = sbbAccessToken;
+            const sbbAccessToken = await this.globalService.checkUserBySub(payload);
+            request['user'] = {...payload, sbbAccessToken};
         } catch {
             throw new UnauthorizedException('Access_token validation failed');
         }

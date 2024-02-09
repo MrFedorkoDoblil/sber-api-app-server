@@ -1,34 +1,25 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards, } from '@nestjs/common';
 import { AccountService } from './account.service';
-import { CreateAccountDto } from './dto/create-account.dto';
-import { UpdateAccountDto } from './dto/update-account.dto';
+import { AuthGuard } from 'src/auth/auth.guard';
+
 
 @Controller('account')
 export class AccountController {
   constructor(private readonly accountService: AccountService) {}
 
-  @Post()
-  create(@Body() createAccountDto: CreateAccountDto) {
-    return this.accountService.create(createAccountDto);
-  }
-
-  @Get()
-  findAll() {
-    return this.accountService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.accountService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAccountDto: UpdateAccountDto) {
-    return this.accountService.update(+id, updateAccountDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.accountService.remove(+id);
+  @UseGuards(AuthGuard)
+  @Get('')
+  async findAll(
+    @Query('accountNumber') accountNumber: string, 
+    @Query('statementDate') statementDate: string,
+    @Query('page') page: string,
+    @Req() req: {user: {sub: string, sbbAccessToken: string}},
+    ){
+    return await this.accountService.getTransactions(
+      accountNumber,
+      statementDate,
+      page,
+      req.user,
+    );
   }
 }

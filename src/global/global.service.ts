@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { BadRequestException, ForbiddenException, Injectable, UnauthorizedException} from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpException, Injectable, UnauthorizedException} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import {  AxiosError, AxiosRequestConfig } from 'axios';
@@ -116,14 +116,13 @@ export class GlobalService {
         const user = await this.userModel.findOne({sbbAccessToken: accessToken});
         if(!user) throw new UnauthorizedException();
         const refreshToken = user.sbbRefreshToken
-
         await lastValueFrom(this.httpService[method](...([...handleOptions(accessToken)] as [string, any, any])))
         .then(res => {
             responseData = res.data
+
         })
         .catch(async (error: AxiosError) => {
             if(!error?.response?.status) {
-                console.log('ONE 162');
                 throw  new BadRequestException;
             }else 
             if([401, 403].includes(error.response.status)){
@@ -142,7 +141,6 @@ export class GlobalService {
                         httpsAgent: configuredHttpsAgent,
                     }
                 )
-
             )
             .then(async refreshRes => {
                 const {access_token, refresh_token} = refreshRes.data;
@@ -153,16 +151,15 @@ export class GlobalService {
                 .then(retryRes => {
                     responseData = retryRes.data
                 })
-                .catch(() => {
-                  throw  new BadRequestException()
+                .catch((error: AxiosError) => {
+                  throw  new HttpException(error.response.data, error.response.status)
                 })
             })
-            .catch(() => {
-                throw new ForbiddenException()
-            })
-        
+            .catch((error: AxiosError) => {
+                throw new HttpException(error.response.data, error.response.status)
+            })     
         } else {
-            throw  new BadRequestException()
+            throw  new HttpException(error.response.data, error.response.status)
         }
     })
         return responseData

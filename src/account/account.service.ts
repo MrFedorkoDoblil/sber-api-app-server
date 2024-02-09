@@ -1,26 +1,31 @@
 import { Injectable } from '@nestjs/common';
-import { CreateAccountDto } from './dto/create-account.dto';
-import { UpdateAccountDto } from './dto/update-account.dto';
+
+import { GlobalService } from 'src/global/global.service';
+
 
 @Injectable()
 export class AccountService {
-  create(createAccountDto: CreateAccountDto) {
-    return 'This action adds a new account';
-  }
+  constructor(
+    private readonly globalService: GlobalService,
+  ){}
 
-  findAll() {
-    return `This action returns all account`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} account`;
-  }
-
-  update(id: number, updateAccountDto: UpdateAccountDto) {
-    return `This action updates a #${id} account`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} account`;
+  async getTransactions(accNumber: string, date: string, page: string, user: {sub: string, sbbAccessToken: string}){
+    const { sbbAccessToken } = user;
+    const generateQueryParams =  () => {
+      return `?accountNumber=${accNumber}&statementDate=${date}&page=${page}`
+    }
+    try {
+      const response =  await this.globalService.reauthSbRequest(
+        'get',
+        this.globalService.getFintechUrl('account.transactions')+generateQueryParams(),
+        sbbAccessToken,
+        {
+          'Content-type': 'application/json;charset=utf-8'
+        }
+      )
+      return response
+    } catch (error) {
+      throw error
+    }
   }
 }

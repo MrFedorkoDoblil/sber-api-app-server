@@ -52,7 +52,7 @@ export const sbbFintechTree: PathTree = {
                     children: [
                         {
                             transactions: {
-                                url: '/tarnsactions'
+                                url: '/transactions'
                             },
                             transactionsId: {
                                 url: '/transactionsId',
