@@ -7,26 +7,27 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
+    ports:
+      - "27018:27017"
     volumes:
       - mongodbdata:/data/db
-  server:
-    build: .
-    restart: always
-    ports:
-      - "${EXPOSE_PORT}:${PORT}"
-    depends_on:
-      - mongo
-    environment: 
-      PORT: ${PORT}
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-      JWT_ACCESS_EXPIRES: ${JWT_ACCESS_EXPIRES}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
-      JWT_REFRESH_EXPIRES: ${JWT_REFRESH_EXPIRES}
-      SB_ID_AUTH_REDIRECT_URI: ${SB_ID_AUTH_REDIRECT_URI}
-      SB_ID_AUTH_CLIENT_ID: ${SB_ID_AUTH_CLIENT_ID}
-      SB_ID_CLIENT_SECRET:  ${SB_ID_CLIENT_SECRET}
-      SB_ID_AUTH_SCOPE: ${SB_ID_AUTH_SCOPE}
-      SB_ID_BASE_URL: ${SB_ID_BASE_URL}
-      SB_FINTECH_BASE_URL: ${SB_FINTECH_BASE_URL}
-volumes:
-  mongodbdata:
+#   server:
+#     build: .
+#     restart: always
+    
+#     depends_on:
+#       - mongo
+#     environment: 
+#       PORT: ${PORT}
+#       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+#       JWT_ACCESS_EXPIRES: ${JWT_ACCESS_EXPIRES}
+#       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+#       JWT_REFRESH_EXPIRES: ${JWT_REFRESH_EXPIRES}
+#       SB_ID_AUTH_REDIRECT_URI: ${SB_ID_AUTH_REDIRECT_URI}
+#       SB_ID_AUTH_CLIENT_ID: ${SB_ID_AUTH_CLIENT_ID}
+#       SB_ID_CLIENT_SECRET:  ${SB_ID_CLIENT_SECRET}
+#       SB_ID_AUTH_SCOPE: ${SB_ID_AUTH_SCOPE}
+#       SB_ID_BASE_URL: ${SB_ID_BASE_URL}
+#       SB_FINTECH_BASE_URL: ${SB_FINTECH_BASE_URL}
+# volumes:
+#   mongodbdata:
