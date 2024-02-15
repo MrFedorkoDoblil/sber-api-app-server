@@ -7,7 +7,7 @@ import { Model } from 'mongoose';
 import { firstValueFrom, lastValueFrom,  } from 'rxjs';
 import { configuredHttpsAgent } from 'src/main';
 import { User } from 'src/schemas/user.schema';
-import { PathTree, sbbAuthTree, sbbFintechTree } from 'libs/sbbApiEndpoints';
+import { sbbAuthTree, sbbFintechTree } from 'libs/apiTrees';
 
 @Injectable()
 export class GlobalService {

@@ -1,53 +1,15 @@
 import * as dotenv from 'dotenv'
+import { sbbAuthTree } from './apiTrees';
 dotenv.config()
 
+
+// string key chaining
 export type PathTree = {
+    
     [index :  string]: {
         url:string;
+        key?: string;
         children?: PathTree[]
-    }
-}
-
-export const sbbAuthTree = {
-    base: {
-        url: process.env.SB_ID_BASE_URL,
-        children:[
-            {
-                auth: {
-                    url: '/ic/sso/api/v2/oauth',
-                    children: [
-                        {
-                            authorize: {
-                                url: '/authorize'
-                            }
-                        },
-                        {
-                            token: {
-                                url:'/token'
-                            }
-                        },
-                        {
-                            clientInfo: {
-                                url: '/user-info'
-                            }
-                        }
-                    ]
-                },
-            },
-        ]
-    }
-} 
-
-export const sbbFintechTree = {
-    base: {
-        url: process.env.SB_FINTECH_BASE_URL,
-        children: [
-            {
-                clientInfo: {
-                    url: '/v1/client-info' 
-                }
-            },
-        ]
     }
 }
 
@@ -84,6 +46,9 @@ export function getUrl<
     })
     return resultArray.join('')
 } 
+
+
+
 
 
 
