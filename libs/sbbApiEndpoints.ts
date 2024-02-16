@@ -13,8 +13,6 @@ export type PathTree = {
     }
 }
 
-type HandleChain<T extends string> = T extends "" ? "" : `.${T}`
-
 export type ExtractKeys<T extends PathTree, K extends keyof T> = 
     {[P in keyof T[K]['children'][number]]: ExtractKeys<T[K]['children'][number], P>}
 
@@ -46,6 +44,8 @@ export function getUrl<
     })
     return resultArray.join('')
 } 
+
+getUrl(sbbAuthTree, '')
 
 
 

@@ -5,12 +5,20 @@ export const sbbAuthTree = {
         url: process.env.SB_ID_BASE_URL,
         children:[
             {
-                auth: {
+                authuutt: {
                     url: '/ic/sso/api/v2/oauth',
                     children: [
                         {
                             authorize: {
-                                url: '/authorize'
+                                url: '/authorize',
+                                children: [
+                                    {
+                                        auth: {
+                                            url: "/additional"
+                                        }
+                                    }
+                                ]
+                            
                             }
                         },
                         {
